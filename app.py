@@ -2,6 +2,10 @@ import streamlit as st
 import numpy as np
 from PIL import Image
 from pathlib import Path
+from database import get_recent_predictions, init_db, save_prediction
+
+
+init_db()
 
 @st.cache_resource
 def load_model():
@@ -27,6 +31,15 @@ st.write("Upload a skin lesion image to classify.")
 
 st.sidebar.header("⚙️ Settings")
 threshold = st.sidebar.slider("Confidence Threshold", 0.0, 1.0, 0.5)
+
+with st.sidebar.expander("Recent Predictions"):
+    recent_predictions = get_recent_predictions()
+    if recent_predictions:
+        for item in recent_predictions:
+            st.write(f"{item['result']} - {item['filename']}")
+            st.caption(f"Score: {item['prediction_score']:.2f} | {item['created_at']}")
+    else:
+        st.caption("No saved predictions yet.")
 
 uploaded_file = st.file_uploader("Upload Image", type=["jpg","png","jpeg"])
 
@@ -56,6 +69,10 @@ if uploaded_file:
         prediction = model.predict(processed)[0][0]
 
         if prediction > threshold:
-            st.error(f"Malignant ({prediction:.2f})")
+            result = "Malignant"
+            st.error(f"{result} ({prediction:.2f})")
         else:
-            st.success(f"Benign ({1 - prediction:.2f})")
+            result = "Benign"
+            st.success(f"{result} ({1 - prediction:.2f})")
+
+        save_prediction(uploaded_file.name, prediction, threshold, result)
