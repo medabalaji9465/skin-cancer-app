@@ -1,5 +1,4 @@
 import streamlit as st
-import tensorflow as tf
 import numpy as np
 from PIL import Image
 from pathlib import Path
@@ -8,6 +7,7 @@ from pathlib import Path
 def load_model():
     if not Path("model.h5").exists():
         return None
+    import tensorflow as tf
     return tf.keras.models.load_model("model.h5")
 
 model = load_model()
