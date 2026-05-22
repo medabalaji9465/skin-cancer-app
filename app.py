@@ -7,6 +7,16 @@ from database import get_recent_predictions, init_db, save_prediction
 
 init_db()
 
+CLASS_LABELS = [
+    "Actinic keratoses",
+    "Basal cell carcinoma",
+    "Benign keratosis-like lesions",
+    "Dermatofibroma",
+    "Melanoma",
+    "Melanocytic nevi",
+    "Vascular lesions",
+]
+
 @st.cache_resource
 def load_model():
     model_path = Path("model.h5")
@@ -19,7 +29,7 @@ def load_model():
         return "tensorflow_missing"
 
     try:
-        return tf.keras.models.load_model(str(model_path))
+        return tf.keras.models.load_model(str(model_path), compile=False)
     except Exception as error:
         st.error(f"Unable to load model: {error}")
         return None
@@ -66,13 +76,14 @@ if uploaded_file:
     else:
         st.image(image, caption="Uploaded Image")
         processed = preprocess_image(image)
-        prediction = model.predict(processed)[0][0]
+        prediction = model.predict(processed)[0]
+        confidence = float(np.max(prediction))
+        class_index = int(np.argmax(prediction))
+        result = CLASS_LABELS[class_index] if class_index < len(CLASS_LABELS) else f"Class {class_index}"
 
-        if prediction > threshold:
-            result = "Malignant"
-            st.error(f"{result} ({prediction:.2f})")
+        if confidence >= threshold:
+            st.success(f"{result} ({confidence:.2f})")
         else:
-            result = "Benign"
-            st.success(f"{result} ({1 - prediction:.2f})")
+            st.warning(f"{result} ({confidence:.2f}) is below the confidence threshold.")
 
-        save_prediction(uploaded_file.name, prediction, threshold, result)
+        save_prediction(uploaded_file.name, confidence, threshold, result)
